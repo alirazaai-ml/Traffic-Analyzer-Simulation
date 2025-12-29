@@ -1,0 +1,81 @@
+[Nodes]
+1,200,200,Downtown-0-0
+2,260,200,Downtown-0-1
+3,320,200,Downtown-0-2
+4,380,200,Downtown-0-3
+5,200,260,Downtown-1-0
+6,260,260,Downtown-1-1
+7,320,260,Downtown-1-2
+8,380,260,Downtown-1-3
+9,200,320,Downtown-2-0
+10,260,320,Downtown-2-1
+11,320,320,Downtown-2-2
+12,380,320,Downtown-2-3
+13,200,380,Downtown-3-0
+14,260,380,Downtown-3-1
+15,320,380,Downtown-3-2
+16,380,380,Downtown-3-3
+17,100,500,Suburb-0-0
+18,200,500,Suburb-0-1
+19,300,500,Suburb-0-2
+20,100,600,Suburb-1-0
+21,200,600,Suburb-1-1
+22,300,600,Suburb-1-2
+23,100,700,Suburb-2-0
+24,200,700,Suburb-2-1
+25,300,700,Suburb-2-2
+26,50,150,Highway-W
+27,450,150,Highway-Center
+28,850,150,Highway-E
+29,450,550,Highway-S
+30,600,300,Shopping-Mall
+31,700,400,City-Hospital
+32,300,600,Central-School
+33,500,500,Central-Park
+
+[Edges]
+1,1,2,60,40,Downtown Street H0-0
+2,2,3,60,40,Downtown Street H0-1
+3,3,4,60,40,Downtown Street H0-2
+4,5,6,60,40,Downtown Street H1-0
+5,6,7,60,40,Downtown Street H1-1
+6,7,8,60,40,Downtown Street H1-2
+7,9,10,60,40,Downtown Street H2-0
+8,10,11,60,40,Downtown Street H2-1
+9,11,12,60,40,Downtown Street H2-2
+10,13,14,60,40,Downtown Street H3-0
+11,14,15,60,40,Downtown Street H3-1
+12,15,16,60,40,Downtown Street H3-2
+13,1,5,60,40,Downtown Street V0-0
+14,5,9,60,40,Downtown Street V1-0
+15,9,13,60,40,Downtown Street V2-0
+16,2,6,60,40,Downtown Street V0-1
+17,6,10,60,40,Downtown Street V1-1
+18,10,14,60,40,Downtown Street V2-1
+19,3,7,60,40,Downtown Street V0-2
+20,7,11,60,40,Downtown Street V1-2
+21,11,15,60,40,Downtown Street V2-2
+22,4,8,60,40,Downtown Street V0-3
+23,8,12,60,40,Downtown Street V1-3
+24,12,16,60,40,Downtown Street V2-3
+25,17,18,100,60,Suburb Road H0-0
+26,18,19,100,60,Suburb Road H0-1
+27,20,21,100,60,Suburb Road H1-0
+28,21,22,100,60,Suburb Road H1-1
+29,23,24,100,60,Suburb Road H2-0
+30,24,25,100,60,Suburb Road H2-1
+31,17,20,100,60,Suburb Road V0-0
+32,20,23,100,60,Suburb Road V1-0
+33,18,21,100,60,Suburb Road V0-1
+34,21,24,100,60,Suburb Road V1-1
+35,19,22,100,60,Suburb Road V0-2
+36,22,25,100,60,Suburb Road V1-2
+37,26,27,400,80,West Highway
+38,27,28,400,80,East Highway
+39,27,29,400,80,South Highway
+40,2,27,100,60,Downtown Access
+41,21,29,100,60,Suburb Access
+42,30,8,150,50,Mall Access
+43,31,28,200,60,Hospital Access
+44,32,22,150,40,School Road
+45,33,21,100,30,Park Road

@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Traffic Analyzer/Traffic Analyzer.vcxproj" Id="80bc0c5e-c927-45c1-b5f5-559d9e12d098" />
+</Solution>
