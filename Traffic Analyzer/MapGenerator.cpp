@@ -7,6 +7,20 @@
 
 MapGenerator::CityType MapGenerator::currentCityType = CityType::SIMPLE_GRID;
 
+Graph MapGenerator::generateCity() {
+    std::cout << "\n=== GENERATING NEW CITY ===" << std::endl;
+    
+    Graph newGraph;
+    
+    generateNextCity(newGraph);
+    
+    std::cout << "City generation complete!" << std::endl;
+    std::cout << "  Nodes: " << newGraph.getNodeCount() << std::endl;
+    std::cout << "  Edges: " << newGraph.getEdgeCount() << std::endl;
+    
+    return newGraph;
+}
+
 int MapGenerator::getNextNodeId(const Graph& graph) {
     auto nodes = graph.getAllNodes();
 
@@ -680,7 +694,7 @@ void MapGenerator::generateNextCity(Graph& graph) {
     std::cout << "\n GENERATING NEXT CITY TYPE..." << std::endl;
 
     std::cout << "Clearing old city..." << std::endl;
-    graph.clearAll();  
+    graph.clearGraph();  // Fixed: use clearGraph() instead of clearAll()
 
     std::cout << "Graph cleared. Node count: " << graph.getNodeCount()
         << ", Edge count: " << graph.getEdgeCount() << std::endl;

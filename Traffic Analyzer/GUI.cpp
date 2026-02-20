@@ -2,6 +2,7 @@
 #include "Graph.h"
 #include "CarSimulation.h"
 #include "MapGenerator.h"
+#include "Config.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -14,7 +15,10 @@
 // Constructor
 GUI::GUI(Graph& map)
     : cityMap(map),
-    window(sf::VideoMode(1200, 800), "Traffic Analysis System"),
+    window(sf::VideoMode(
+        static_cast<unsigned int>(UIConfig::WINDOW_WIDTH),
+        static_cast<unsigned int>(UIConfig::WINDOW_HEIGHT)
+    ), "Traffic Analysis System"),
     zoomLevel(1.0f),
     viewOffset(0.0f, 0.0f),
     isDragging(false),
@@ -24,149 +28,27 @@ GUI::GUI(Graph& map)
     destActive(false),
     carSim(nullptr),
     showCars(true),
-    simulationSpeed(1.0f),
+    simulationSpeed(SimConfig::DEFAULT_SIMULATION_SPEED),
     totalCarsSpawned(0),
-    freeFlowColor(0, 200, 0),
-    slowColor(255, 255, 0),
-    congestedColor(255, 50, 50),
-    blockedColor(100, 100, 100),
+    freeFlowColor(ColorConfig::FREE_FLOW_R, ColorConfig::FREE_FLOW_G, ColorConfig::FREE_FLOW_B),
+    slowColor(ColorConfig::SLOW_R, ColorConfig::SLOW_G, ColorConfig::SLOW_B),
+    congestedColor(ColorConfig::CONGESTED_R, ColorConfig::CONGESTED_G, ColorConfig::CONGESTED_B),
+    blockedColor(ColorConfig::BLOCKED_R, ColorConfig::BLOCKED_G, ColorConfig::BLOCKED_B),
     showPredictions(false),
-    predictedCongestionColor(128, 0, 128)  
+    predictedCongestionColor(ColorConfig::PREDICTED_CONGESTION_R, 
+                            ColorConfig::PREDICTED_CONGESTION_G, 
+                            ColorConfig::PREDICTED_CONGESTION_B)
 {
     std::cout << "Initializing GUI..." << std::endl;
 
-    // Load font
-    bool fontLoaded = false;
-    const char* fontPaths[] = {
-        "arial.ttf",
-        "fonts/arial.ttf",
-        "../fonts/arial.ttf",
-        "C:/Windows/Fonts/arial.ttf",
-        "C:/Windows/Fonts/tahoma.ttf",
-        "C:/Windows/Fonts/calibri.ttf"
-    };
+    initializeFont();
+    initializeWarningTexture();
+    initializeSystems();
+    initializeUI();
 
-    for (const char* path : fontPaths) {
-        if (font.loadFromFile(path)) {
-            std::cout << "Font loaded from: " << path << std::endl;
-            fontLoaded = true;
-            break;
-        }
-    }
-
-    if (!fontLoaded) {
-        std::cerr << "Warning: Could not load font!" << std::endl;
-    }
-
-
-    // Load warning texture or create one
-    if (!warningTexture.loadFromFile("warning.png")) {
-        sf::Image img;
-        img.create(32, 32, sf::Color::Transparent);
-
-        for (int y = 0; y < 32; y++) {
-            for (int x = 0; x < 32; x++) {
-                if (abs(x - 16) <= y / 2 && y >= 8 && y <= 24) {
-                    img.setPixel(x, y, sf::Color(255, 255, 0));
-                }
-            }
-        }
-        warningTexture.loadFromImage(img);
-    }
-
-    warningSprite.setTexture(warningTexture);
-    warningSprite.setOrigin(16, 16); 
-
-    std::cout << "Initializing PredictionSystem..." << std::endl;
-    predictionSystem = new PredictionSystem(&cityMap);
-
-    if (predictionSystem) {
-        std::cout << "PredictionSystem created successfully!" << std::endl;
-    }
-    else {
-        std::cout << "ERROR: Failed to create PredictionSystem!" << std::endl;
-    }
-
-    carSim = new CarSimulation(map);
-
-    accidentSystem = new AccidentSystem(&cityMap);
-
-    // Setup Control Panel
-    controlPanel.setSize(sf::Vector2f(300.0f, 800.0f));
-    controlPanel.setFillColor(sf::Color(40, 40, 50));
-    controlPanel.setPosition(900.0f, 0.0f);
-
-    // Panel Title
-    panelTitle.setFont(font);
-    panelTitle.setString("Control Panel");
-    panelTitle.setCharacterSize(20); 
-    panelTitle.setFillColor(sf::Color::White);
-    panelTitle.setStyle(sf::Text::Bold);
-    panelTitle.setPosition(920.0f, 15.0f);
-
-    // Source input
-    sourceLabel.setFont(font);
-    sourceLabel.setString("Source Node:");
-    sourceLabel.setCharacterSize(14); 
-    sourceLabel.setFillColor(sf::Color::White);
-    sourceLabel.setPosition(920.0f, 60.0f); 
-
-    sourceBox.setSize(sf::Vector2f(200.0f, 25.0f)); 
-    sourceBox.setFillColor(sf::Color(60, 60, 70));
-    sourceBox.setOutlineColor(sf::Color(150, 150, 150));
-    sourceBox.setOutlineThickness(1.5f); 
-    sourceBox.setPosition(920.0f, 85.0f); 
-
-    // Destination input
-    destLabel.setFont(font);
-    destLabel.setString("Destination:");
-    destLabel.setCharacterSize(14); 
-    destLabel.setFillColor(sf::Color::White);
-    destLabel.setPosition(920.0f, 125.0f); 
-
-    destBox.setSize(sf::Vector2f(200.0f, 25.0f)); 
-    destBox.setFillColor(sf::Color(60, 60, 70));
-    destBox.setOutlineColor(sf::Color(150, 150, 150));
-    destBox.setOutlineThickness(1.5f); 
-    destBox.setPosition(920.0f, 150.0f);
-
-
-    float buttonWidth = 130.0f; 
-    float buttonHeight = 28.0f;
-    float startY = 190.0f;
-    float buttonSpacing = 32.0f;
-    float columnSpacing = 5.0f; 
-
-    // COLUMN 1 (left)
-    createButton(findRouteBtn, 920.0f, startY, buttonWidth, buttonHeight, "Find Path");
-    createButton(addCarBtn, 920.0f, startY + buttonSpacing, buttonWidth, buttonHeight, "Add Car");
-    createButton(clearCarsBtn, 920.0f, startY + 2 * buttonSpacing, buttonWidth, buttonHeight, "Clear Cars");
-    createButton(trafficBtn, 920.0f, startY + 3 * buttonSpacing, buttonWidth, buttonHeight, "Traffic Sim");
-    createButton(peakHourBtn, 920.0f, startY + 4 * buttonSpacing, buttonWidth, buttonHeight, "Peak Hour");
-    createButton(accidentBtn, 920.0f, startY + 5 * buttonSpacing, buttonWidth, buttonHeight, "Accident");
-
-    // COLUMN 2 (right - shifted 5px)
-    createButton(generateCityBtn, 920.0f + buttonWidth + columnSpacing, startY, buttonWidth, buttonHeight, "Generate City");
-    createButton(spawnManyCarsBtn, 920.0f + buttonWidth + columnSpacing, startY + buttonSpacing, buttonWidth, buttonHeight, "20 Cars");
-    createButton(rushHourBtn, 920.0f + buttonWidth + columnSpacing, startY + 2 * buttonSpacing, buttonWidth, buttonHeight, "Rush Hour");
-    createButton(clearTrafficBtn, 920.0f + buttonWidth + columnSpacing, startY + 3 * buttonSpacing, buttonWidth, buttonHeight, "Clear All");
-    createButton(clearAccidentsBtn, 920.0f + buttonWidth + columnSpacing,
-        startY + 4 * buttonSpacing, buttonWidth, buttonHeight, "Clear Accidents");
-    createButton(togglePredictionsBtn, 920.0f + buttonWidth + columnSpacing,
-        startY + 5 * buttonSpacing, buttonWidth, buttonHeight, "Predictions");
-
-    // Statistics text - BELOW both columns
-    float statsStartY = startY + 6 * buttonSpacing + 10.0f; 
-    statsText.setFont(font);
-    statsText.setCharacterSize(11); 
-    statsText.setFillColor(sf::Color::White);
-    statsText.setLineSpacing(0.8f);
-    statsText.setPosition(920.0f, statsStartY);
-
-    updateStatistics(0, 0, 0, 0.0f);
+    std::cout << "GUI initialization complete!" << std::endl;
 }
 
-// Destructor
 GUI::~GUI() {
     delete carSim;
     delete accidentSystem;
@@ -340,7 +222,6 @@ void GUI::drawControlPanel() {
         sourceDisplay.setString(sourceText);
         sourceDisplay.setCharacterSize(16); 
         sourceDisplay.setFillColor(sf::Color::White);
-
         sourceDisplay.setPosition(930.0f, 88.0f);
         window.draw(sourceDisplay);
     }
@@ -362,7 +243,6 @@ void GUI::drawControlPanel() {
     drawButton(trafficBtn);
     drawButton(peakHourBtn);
     drawButton(accidentBtn);
-
     drawButton(generateCityBtn);      
     drawButton(spawnManyCarsBtn);     
     drawButton(rushHourBtn);          
@@ -520,23 +400,6 @@ void GUI::drawEdge(const Edge& edge) {
         roadWidth = 5.0f * zoomLevel;
     }
 
-    float baseWidth = 3.0f * zoomLevel;
-
-    if (carSim) {
-        int carsOnThisEdge = 0; 
-
-        if (carsOnThisEdge > 3) {
-            baseWidth = 5.0f * zoomLevel;
-        }
-        else if (carsOnThisEdge > 1) {
-            baseWidth = 4.0f * zoomLevel;
-        }
-    }
-
-    // Use baseWidth for road thickness
-    //road.setSize(sf::Vector2f(length, baseWidth));
-
-
     // Draw road
     sf::Vector2f direction(toX - fromX, toY - fromY);
     float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
@@ -551,14 +414,8 @@ void GUI::drawEdge(const Edge& edge) {
     road.setRotation(angle);
     road.setFillColor(roadColor);
 
-
-
     window.draw(road);
 }
-
-
-
-
 
 void GUI::drawPath() {
     if (currentPath.size() < 2) return;
@@ -627,36 +484,336 @@ void GUI::drawPredictions() {
         window.draw(predictionOverlay);
     }
 }
+
 void GUI::handleMouseClick(int x, int y) {
     sf::Vector2f screenPos = window.mapPixelToCoords(sf::Vector2i(x, y), window.getDefaultView());
 
-    if (screenPos.x >= 900.0f) {
-        handleButtonClick(screenPos);
-
-        if (sourceBox.getGlobalBounds().contains(screenPos)) {
-            sourceActive = true;
-            destActive = false;
-        }
-        else if (destBox.getGlobalBounds().contains(screenPos)) {
-            destActive = true;
-            sourceActive = false;
-        }
-        else {
-            sourceActive = destActive = false;
-        }
+    if (screenPos.x >= UIConfig::CONTROL_PANEL_X) {
+        handleControlPanelClick(screenPos);
         return;
     }
 
+    handleMapClick(x, y);
+}
+
+void GUI::handleButtonClick(const sf::Vector2f& screenPos) {
+    // Find Path button
+    if (findRouteBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Find Path clicked - Finding route from " << selectedStartNode
+            << " to " << selectedEndNode << std::endl;
+
+        if (selectedStartNode != -1 && selectedEndNode != -1) {
+            currentPath = cityMap.findShortestPath(selectedStartNode, selectedEndNode);
+
+            if (!currentPath.empty()) {
+                std::cout << "Path found with " << currentPath.size() << " nodes" << std::endl;
+
+                // Calculate and display travel time
+                float totalTime = 0.0f;
+                for (size_t i = 0; i < currentPath.size() - 1; i++) {
+                    int edgeId = cityMap.findEdgeId(currentPath[i], currentPath[i + 1]);
+                    if (edgeId != -1) {
+                        totalTime += cityMap.getEdge(edgeId).currentTravelTime;
+                    }
+                }
+                std::cout << "Estimated travel time: " << totalTime << " minutes" << std::endl;
+            }
+            else {
+                std::cout << "No path found between nodes!" << std::endl;
+            }
+        }
+        else {
+            std::cout << "Please select both source and destination nodes first!" << std::endl;
+        }
+    }
+
+    // Add Car button
+    else if (addCarBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Add Car clicked" << std::endl;
+
+        if (selectedStartNode != -1 && selectedEndNode != -1) {
+            std::vector<int> path = cityMap.findShortestPath(selectedStartNode, selectedEndNode);
+            if (!path.empty() && carSim) {
+                carSim->addCar(selectedStartNode, selectedEndNode, path);
+                totalCarsSpawned++;
+                std::cout << "Car added! Total cars: " << carSim->getVehicleCount() << std::endl;
+            }
+        }
+        else {
+            std::cout << "Please select both source and destination nodes first!" << std::endl;
+        }
+    }
+
+    // Clear Cars button
+    else if (clearCarsBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Clear Cars clicked" << std::endl;
+
+        if (carSim) {
+            carSim->clearAllCars();
+            std::cout << "All vehicles removed" << std::endl;
+        }
+    }
+
+    // Traffic Sim button (toggle auto-spawning)
+    else if (trafficBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Traffic Sim clicked - Toggling auto-spawn" << std::endl;
+
+        static bool autoSpawnEnabled = false;
+        autoSpawnEnabled = !autoSpawnEnabled;
+
+        if (carSim) {
+            // You would need to add an auto-spawn toggle in CarSimulation
+            std::cout << "Auto-spawn " << (autoSpawnEnabled ? "enabled" : "disabled") << std::endl;
+
+            // Change button color to indicate state
+            trafficBtn.shape.setFillColor(autoSpawnEnabled ?
+                sf::Color(100, 200, 100) : sf::Color(70, 130, 180));
+        }
+    }
+
+    // Peak Hour button - spawn 30 cars
+    else if (peakHourBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Peak Hour clicked - Spawning 30 cars" << std::endl;
+
+        if (carSim && cityMap.getNodeCount() > 0) {
+            auto nodes = cityMap.getAllNodes();
+            if (nodes.size() >= 2) {
+                std::vector<int> nodeIds;
+                for (const auto& pair : nodes) {
+                    nodeIds.push_back(pair.first);
+                }
+
+                int spawned = 0;
+                for (int i = 0; i < 30; i++) {
+                    int startIdx = rand() % nodeIds.size();
+                    int endIdx = rand() % nodeIds.size();
+
+                    if (startIdx != endIdx) {
+                        int start = nodeIds[startIdx];
+                        int end = nodeIds[endIdx];
+
+                        std::vector<int> path = cityMap.findShortestPath(start, end);
+                        if (!path.empty()) {
+                            carSim->addCar(start, end, path);
+                            spawned++;
+                        }
+                    }
+                }
+                totalCarsSpawned += spawned;
+                std::cout << "Spawned " << spawned << " cars. Total: "
+                    << carSim->getVehicleCount() << std::endl;
+            }
+        }
+    }
+
+    // Accident button - create random accident
+    else if (accidentBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Accident clicked - Creating random accident" << std::endl;
+
+        if (accidentSystem && cityMap.getEdgeCount() > 0) {
+            accidentSystem->createRandomAccident();
+            std::cout << "Random accident created. Active accidents: "
+                << accidentSystem->getActiveAccidentCount() << std::endl;
+        }
+    }
+
+    // Generate City button
+    else if (generateCityBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Generate City clicked" << std::endl;
+
+        cityMap = MapGenerator::generateCity();
+
+        // Reset systems with new map
+        delete carSim;
+        delete accidentSystem;
+        delete predictionSystem;
+
+        initializeSystems();
+
+        // Clear selections
+        selectedStartNode = -1;
+        selectedEndNode = -1;
+        sourceText = "";
+        destText = "";
+        currentPath.clear();
+
+        std::cout << "New city generated with " << cityMap.getNodeCount()
+            << " nodes and " << cityMap.getEdgeCount() << " edges" << std::endl;
+    }
+
+    // 20 Cars button
+    else if (spawnManyCarsBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "20 Cars clicked - Spawning 20 random cars" << std::endl;
+
+        if (carSim && cityMap.getNodeCount() > 0) {
+            auto nodes = cityMap.getAllNodes();
+            if (nodes.size() >= 2) {
+                std::vector<int> nodeIds;
+                for (const auto& pair : nodes) {
+                    nodeIds.push_back(pair.first);
+                }
+
+                int spawned = 0;
+                for (int i = 0; i < 20; i++) {
+                    int startIdx = rand() % nodeIds.size();
+                    int endIdx = rand() % nodeIds.size();
+
+                    if (startIdx != endIdx) {
+                        int start = nodeIds[startIdx];
+                        int end = nodeIds[endIdx];
+
+                        std::vector<int> path = cityMap.findShortestPath(start, end);
+                        if (!path.empty()) {
+                            carSim->addCar(start, end, path);
+                            spawned++;
+                        }
+                    }
+                }
+                totalCarsSpawned += spawned;
+                std::cout << "Spawned " << spawned << " cars" << std::endl;
+            }
+        }
+    }
+
+    // Rush Hour button - heavy traffic
+    else if (rushHourBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Rush Hour clicked - Creating heavy traffic" << std::endl;
+
+        if (carSim && cityMap.getNodeCount() > 0) {
+            auto nodes = cityMap.getAllNodes();
+            if (nodes.size() >= 2) {
+                std::vector<int> nodeIds;
+                for (const auto& pair : nodes) {
+                    nodeIds.push_back(pair.first);
+                }
+
+                // Spawn 50 cars
+                int spawned = 0;
+                for (int i = 0; i < 50; i++) {
+                    int startIdx = rand() % nodeIds.size();
+                    int endIdx = rand() % nodeIds.size();
+
+                    if (startIdx != endIdx) {
+                        int start = nodeIds[startIdx];
+                        int end = nodeIds[endIdx];
+
+                        std::vector<int> path = cityMap.findShortestPath(start, end);
+                        if (!path.empty()) {
+                            carSim->addCar(start, end, path);
+                            spawned++;
+                        }
+                    }
+                }
+                totalCarsSpawned += spawned;
+
+                // Increase congestion on all edges
+                auto edges = cityMap.getAllEdges();
+                for (auto& pair : edges) {
+                    Edge& edge = pair.second;
+                    if (rand() % 100 < 70) { // 70% chance of congestion
+                        edge.trafficLevel = TrafficLevel::CONGESTED;
+                        edge.currentTravelTime = edge.baseTravelTime * 2.5f;
+                    }
+                    else if (rand() % 100 < 30) { // 30% chance of slow traffic
+                        edge.trafficLevel = TrafficLevel::SLOW;
+                        edge.currentTravelTime = edge.baseTravelTime * 1.5f;
+                    }
+                }
+
+                std::cout << "Rush hour created with " << spawned << " cars and heavy congestion" << std::endl;
+            }
+        }
+    }
+
+    // Clear All button
+    else if (clearTrafficBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Clear All clicked - Resetting everything" << std::endl;
+
+        if (carSim) {
+            carSim->clearAllCars();
+        }
+
+        if (accidentSystem) {
+            accidentSystem->clearAllAccidents();
+        }
+
+        // Reset all edges to free flow
+        auto edges = cityMap.getAllEdges();
+        for (auto& pair : edges) {
+            Edge& edge = pair.second;
+            edge.trafficLevel = TrafficLevel::FREE_FLOW;
+            edge.currentTravelTime = edge.baseTravelTime;
+            edge.isBlocked = false;
+        }
+
+        // Clear selections
+        selectedStartNode = -1;
+        selectedEndNode = -1;
+        sourceText = "";
+        destText = "";
+        currentPath.clear();
+
+        std::cout << "All cleared" << std::endl;
+    }
+
+    // Clear Accidents button
+    else if (clearAccidentsBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Clear Accidents clicked" << std::endl;
+
+        if (accidentSystem) {
+            accidentSystem->clearAllAccidents();
+            std::cout << "All accidents cleared" << std::endl;
+        }
+    }
+
+    // Toggle Predictions button
+    else if (togglePredictionsBtn.shape.getGlobalBounds().contains(screenPos)) {
+        std::cout << "Predictions clicked - Toggling prediction overlay" << std::endl;
+
+        showPredictions = !showPredictions;
+
+        // Change button color to indicate state
+        togglePredictionsBtn.shape.setFillColor(showPredictions ?
+            sf::Color(100, 200, 100) : sf::Color(70, 130, 180));
+
+        std::cout << "Predictions " << (showPredictions ? "enabled" : "disabled") << std::endl;
+    }
+}
+
+void GUI::handleControlPanelClick(const sf::Vector2f& screenPos) {
+    handleButtonClick(screenPos);
+
+    if (sourceBox.getGlobalBounds().contains(screenPos)) {
+        sourceActive = true;
+        destActive = false;
+    }
+    else if (destBox.getGlobalBounds().contains(screenPos)) {
+        destActive = true;
+        sourceActive = false;
+    }
+    else {
+        sourceActive = destActive = false;
+    }
+}
+
+void GUI::handleMapClick(int x, int y) {
     sf::View mapView = window.getDefaultView();
-    mapView.setSize(sf::Vector2f(900.0f / zoomLevel, 800.0f / zoomLevel));
-    mapView.setCenter(sf::Vector2f(450.0f / zoomLevel + viewOffset.x,
-        400.0f / zoomLevel + viewOffset.y));
+    mapView.setSize(sf::Vector2f(UIConfig::MAP_VIEWPORT_WIDTH / zoomLevel, UIConfig::WINDOW_HEIGHT / zoomLevel));
+    mapView.setCenter(sf::Vector2f(UIConfig::MAP_VIEWPORT_WIDTH / (2.0f * zoomLevel) + viewOffset.x,
+        UIConfig::WINDOW_HEIGHT / (2.0f * zoomLevel) + viewOffset.y));
 
     sf::Vector2f worldPos = window.mapPixelToCoords(sf::Vector2i(x, y), mapView);
 
-    // Find node at this position
+    int nodeId = findNodeAtPosition(worldPos);
+    
+    if (nodeId != -1) {
+        handleNodeSelection(nodeId);
+    }
+}
+
+int GUI::findNodeAtPosition(const sf::Vector2f& worldPos) const {
     int nodeId = -1;
-    float minDist = 15.0f * zoomLevel; 
+    float minDist = RenderConfig::NODE_SELECTION_RADIUS * zoomLevel;
 
     auto nodes = cityMap.getAllNodes();
     for (const auto& pair : nodes) {
@@ -675,307 +832,237 @@ void GUI::handleMouseClick(int x, int y) {
         }
     }
 
-    if (nodeId != -1) {
-        if (sourceActive) {
-            sourceText = std::to_string(nodeId);
+    return nodeId;
+}
+
+void GUI::handleNodeSelection(int nodeId) {
+    if (sourceActive) {
+        sourceText = std::to_string(nodeId);
+        selectedStartNode = nodeId;
+    }
+    else if (destActive) {
+        destText = std::to_string(nodeId);
+        selectedEndNode = nodeId;
+    }
+    else {
+        if (selectedStartNode == -1) {
             selectedStartNode = nodeId;
+            sourceText = std::to_string(nodeId);
         }
-        else if (destActive) {
-            destText = std::to_string(nodeId);
+        else if (selectedEndNode == -1) {
             selectedEndNode = nodeId;
+            destText = std::to_string(nodeId);
         }
         else {
-            if (selectedStartNode == -1) {
-                selectedStartNode = nodeId;
-                sourceText = std::to_string(nodeId);
-            }
-            else if (selectedEndNode == -1) {
-                selectedEndNode = nodeId;
-                destText = std::to_string(nodeId);
-            }
-            else {
-                selectedStartNode = nodeId;
-                selectedEndNode = -1;
-                sourceText = std::to_string(nodeId);
-                destText = "";
-                currentPath.clear();
+            selectedStartNode = nodeId;
+            selectedEndNode = -1;
+            sourceText = std::to_string(nodeId);
+            destText = "";
+            currentPath.clear();
+        }
+    }
+    std::cout << "Node " << nodeId << " selected" << std::endl;
+}
+
+void GUI::initializeFont() {
+    bool fontLoaded = false;
+    
+    for (int i = 0; i < FontConfig::FONT_PATH_COUNT; ++i) {
+        if (font.loadFromFile(FontConfig::FONT_PATHS[i])) {
+            std::cout << "Font loaded from: " << FontConfig::FONT_PATHS[i] << std::endl;
+            fontLoaded = true;
+            break;
+        }
+    }
+
+    if (!fontLoaded) {
+        std::cerr << "Warning: Could not load font! Text rendering may fail." << std::endl;
+    }
+}
+
+void GUI::initializeWarningTexture() {
+    if (!warningTexture.loadFromFile(FileConfig::WARNING_TEXTURE_PATH)) {
+        // Generate procedural warning texture
+        sf::Image img;
+        img.create(FileConfig::WARNING_TEXTURE_SIZE, FileConfig::WARNING_TEXTURE_SIZE, 
+                   sf::Color::Transparent);
+
+        const int size = FileConfig::WARNING_TEXTURE_SIZE;
+        const int center = size / 2;
+        
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                if (abs(x - center) <= y / 2 && y >= size / 4 && y <= 3 * size / 4) {
+                    img.setPixel(x, y, sf::Color(255, 255, 0));
+                }
             }
         }
-        std::cout << "Node " << nodeId << " selected" << std::endl;
+        warningTexture.loadFromImage(img);
     }
+
+    warningSprite.setTexture(warningTexture);
+    warningSprite.setOrigin(FileConfig::WARNING_TEXTURE_SIZE / 2, 
+                           FileConfig::WARNING_TEXTURE_SIZE / 2);
+}
+
+void GUI::initializeSystems() {
+    std::cout << "Initializing subsystems..." << std::endl;
+
+    predictionSystem = new PredictionSystem(&cityMap);
+    if (!predictionSystem) {
+        std::cerr << "ERROR: Failed to create PredictionSystem!" << std::endl;
+    } else {
+        std::cout << "  PredictionSystem initialized" << std::endl;
+    }
+
+    carSim = new CarSimulation(cityMap);
+    if (!carSim) {
+        std::cerr << "ERROR: Failed to create CarSimulation!" << std::endl;
+    } else {
+        std::cout << "  CarSimulation initialized" << std::endl;
+    }
+
+    accidentSystem = new AccidentSystem(&cityMap);
+    if (!accidentSystem) {
+        std::cerr << "ERROR: Failed to create AccidentSystem!" << std::endl;
+    } else {
+        std::cout << "  AccidentSystem initialized" << std::endl;
+    }
+}
+
+void GUI::initializeUI() {
+    initializeControlPanel();
+    initializeInputFields();
+    initializeButtons();
+    initializeStatistics();
+}
+
+void GUI::initializeControlPanel() {
+    controlPanel.setSize(sf::Vector2f(UIConfig::CONTROL_PANEL_WIDTH, UIConfig::WINDOW_HEIGHT));
+    controlPanel.setFillColor(sf::Color(ColorConfig::PANEL_R, ColorConfig::PANEL_G, ColorConfig::PANEL_B));
+    controlPanel.setPosition(UIConfig::CONTROL_PANEL_X, 0.0f);
+
+    panelTitle.setFont(font);
+    panelTitle.setString("Control Panel");
+    panelTitle.setCharacterSize(UIConfig::PANEL_TITLE_SIZE);
+    panelTitle.setFillColor(sf::Color::White);
+    panelTitle.setStyle(sf::Text::Bold);
+    panelTitle.setPosition(920.0f, 15.0f);
+}
+
+void GUI::initializeInputFields() {
+    // Source input
+    sourceLabel.setFont(font);
+    sourceLabel.setString("Source Node:");
+    sourceLabel.setCharacterSize(UIConfig::LABEL_SIZE);
+    sourceLabel.setFillColor(sf::Color::White);
+    sourceLabel.setPosition(920.0f, 60.0f);
+
+    sourceBox.setSize(sf::Vector2f(UIConfig::INPUT_BOX_WIDTH, UIConfig::INPUT_BOX_HEIGHT));
+    sourceBox.setFillColor(sf::Color(60, 60, 70));
+    sourceBox.setOutlineColor(sf::Color(150, 150, 150));
+    sourceBox.setOutlineThickness(1.5f);
+    sourceBox.setPosition(920.0f, 85.0f);
+
+    // Destination input
+    destLabel.setFont(font);
+    destLabel.setString("Destination:");
+    destLabel.setCharacterSize(UIConfig::LABEL_SIZE);
+    destLabel.setFillColor(sf::Color::White);
+    destLabel.setPosition(920.0f, 125.0f);
+
+    destBox.setSize(sf::Vector2f(UIConfig::INPUT_BOX_WIDTH, UIConfig::INPUT_BOX_HEIGHT));
+    destBox.setFillColor(sf::Color(60, 60, 70));
+    destBox.setOutlineColor(sf::Color(150, 150, 150));
+    destBox.setOutlineThickness(1.5f);
+    destBox.setPosition(920.0f, 150.0f);
+}
+
+void GUI::initializeButtons() {
+    const float col1X = 920.0f;
+    const float col2X = col1X + UIConfig::BUTTON_WIDTH + UIConfig::COLUMN_SPACING;
+    const float startY = UIConfig::BUTTON_START_Y;
+    const float spacing = UIConfig::BUTTON_SPACING;
+
+    // Column 1 (left)
+    createButton(findRouteBtn, col1X, startY, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Find Path");
+    createButton(addCarBtn, col1X, startY + spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Add Car");
+    createButton(clearCarsBtn, col1X, startY + 2 * spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Clear Cars");
+    createButton(trafficBtn, col1X, startY + 3 * spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Traffic Sim");
+    createButton(peakHourBtn, col1X, startY + 4 * spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Peak Hour");
+    createButton(accidentBtn, col1X, startY + 5 * spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Accident");
+
+    // Column 2 (right)
+    createButton(generateCityBtn, col2X, startY, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Generate City");
+    createButton(spawnManyCarsBtn, col2X, startY + spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "20 Cars");
+    createButton(rushHourBtn, col2X, startY + 2 * spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Rush Hour");
+    createButton(clearTrafficBtn, col2X, startY + 3 * spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Clear All");
+    createButton(clearAccidentsBtn, col2X, startY + 4 * spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Clear Accidents");
+    createButton(togglePredictionsBtn, col2X, startY + 5 * spacing, UIConfig::BUTTON_WIDTH, UIConfig::BUTTON_HEIGHT, "Predictions");
+}
+
+void GUI::initializeStatistics() {
+    float statsStartY = UIConfig::BUTTON_START_Y + 6 * UIConfig::BUTTON_SPACING + 10.0f;
+    statsText.setFont(font);
+    statsText.setCharacterSize(UIConfig::STATS_TEXT_SIZE);
+    statsText.setFillColor(sf::Color::White);
+    statsText.setLineSpacing(0.8f);
+    statsText.setPosition(920.0f, statsStartY);
+    updateStatistics(0, 0, 0, 0.0f);
 }
 
 void GUI::handleTextInput(sf::Uint32 unicode) {
-    if (unicode == 8) { 
-        if (sourceActive && !sourceText.empty()) {
-            sourceText.pop_back();
+    if (unicode == InputConfig::BACKSPACE_KEY) {
+        handleBackspace();
+    }
+    else if (unicode >= InputConfig::DIGIT_START && unicode <= InputConfig::DIGIT_END) {
+        handleDigitInput(static_cast<char>(unicode));
+    }
+    else if (unicode == InputConfig::ENTER_KEY) {
+        handleEnterKey();
+    }
+}
+
+void GUI::handleBackspace() {
+    if (sourceActive && !sourceText.empty()) {
+        sourceText.pop_back();
+    }
+    else if (destActive && !destText.empty()) {
+        destText.pop_back();
+    }
+}
+
+void GUI::handleDigitInput(char digit) {
+    if (sourceActive) {
+        sourceText += digit;
+        try {
+            selectedStartNode = std::stoi(sourceText);
         }
-        else if (destActive && !destText.empty()) {
-            destText.pop_back();
+        catch (const std::exception&) {
+            selectedStartNode = -1;
+            std::cerr << "Invalid source node ID" << std::endl;
         }
     }
-    else if (unicode >= 48 && unicode <= 57) { 
-        if (sourceActive) {
-            sourceText += static_cast<char>(unicode);
-            try {
-                selectedStartNode = std::stoi(sourceText);
-            }
-            catch (...) {
-                selectedStartNode = -1;
-            }
+    else if (destActive) {
+        destText += digit;
+        try {
+            selectedEndNode = std::stoi(destText);
         }
-        else if (destActive) {
-            destText += static_cast<char>(unicode);
-            try {
-                selectedEndNode = std::stoi(destText);
-            }
-            catch (...) {
-                selectedEndNode = -1;
-            }
-        }
-    }
-    else if (unicode == 13) { 
-        if (sourceActive) {
-            sourceActive = false;
-            destActive = true;
-        }
-        else if (destActive) {
-            destActive = false;
-            sourceActive = true;
+        catch (const std::exception&) {
+            selectedEndNode = -1;
+            std::cerr << "Invalid destination node ID" << std::endl;
         }
     }
 }
 
-void GUI::handleButtonClick(const sf::Vector2f& mousePos) {
-    if (findRouteBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "Find Shortest Path button clicked!" << std::endl;
-
-        if (selectedStartNode != -1 && selectedEndNode != -1) {
-            std::vector<int> path = cityMap.findShortestPath(selectedStartNode, selectedEndNode);
-            if (!path.empty()) {
-                currentPath = path;
-                std::cout << "Path found with " << path.size() << " nodes" << std::endl;
-            }
-            else {
-                std::cout << "No path found!" << std::endl;
-                currentPath.clear();
-            }
-        }
-        else {
-            std::cout << "Please select both source and destination nodes!" << std::endl;
-        }
+void GUI::handleEnterKey() {
+    if (sourceActive) {
+        sourceActive = false;
+        destActive = true;
     }
-    else if (addCarBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "Add Random Car button clicked!" << std::endl;
-
-        auto nodes = cityMap.getAllNodes();
-        if (nodes.size() >= 2) {
-            std::vector<int> nodeIds;
-            for (const auto& pair : nodes) {
-                nodeIds.push_back(pair.first);
-            }
-
-            int startNode = nodeIds[rand() % nodeIds.size()];
-            int endNode = nodeIds[rand() % nodeIds.size()];
-
-            while (endNode == startNode && nodeIds.size() > 1) {
-                endNode = nodeIds[rand() % nodeIds.size()];
-            }
-
-            addCar(startNode, endNode);
-        }
-    }
-    else if (clearCarsBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "Clear Cars button clicked!" << std::endl;
-        if (carSim) {
-            carSim->clearAllCars();
-        }
-        currentPath.clear();
-    }
-    else if (trafficBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "\n TRAFFIC SIMULATION BUTTON CLICKED" << std::endl;
-
-        if (carSim) {
-            carSim->toggleRunning();
-
-            if (carSim->getIsRunning()) {
-                trafficBtn.label.setString("Stop Traffic");
-                std::cout << " TRAFFIC SIMULATION ACTIVE" << std::endl;
-                std::cout << "   Cars will spawn automatically" << std::endl;
-            }
-            else {
-                trafficBtn.label.setString("Traffic Sim");
-                std::cout << "TRAFFIC SIMULATION INACTIVE" << std::endl;
-            }
-        }
-    }
-    else if (peakHourBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "\n  PEAK HOUR SIMULATION" << std::endl;
-
-        if (carSim) {
-            for (int i = 0; i < 30; i++) {
-                carSim->addRandomCar();
-            }
-        }
-
-        auto edges = cityMap.getAllEdges();
-        for (const auto& pair : edges) {
-            Edge edge = pair.second;
-
-            Node fromNode = cityMap.getNode(edge.fromNodeId);
-            Node toNode = cityMap.getNode(edge.toNodeId);
-            float midX = (fromNode.x + toNode.x) / 2;
-            float midY = (fromNode.y + toNode.y) / 2;
-
-            if (abs(midX - 400) < 200 && abs(midY - 300) < 200) {
-                cityMap.updateEdgeTraffic(pair.first, edge.speedLimit * 0.3f);
-            }
-        }
-
-        peakHourBtn.shape.setFillColor(sf::Color(255, 100, 100));
-        peakHourBtn.label.setString("Peak Active");
-
-        std::cout << " Added 30 cars and congested downtown!" << std::endl;
-    }
-    
-    else if (accidentBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "Random Accident button clicked!" << std::endl;
-
-        auto edges = cityMap.getAllEdges();
-        if (!edges.empty()) {
-            auto it = edges.begin();
-            std::advance(it, rand() % edges.size());
-            int randomEdgeId = it->first;
-
-            if (accidentSystem) {
-                accidentSystem->createAccident(randomEdgeId, 180.0f); 
-            }
-
-            cityMap.blockEdge(randomEdgeId, 180.0f);
-
-            std::cout << "Accident created on edge " << randomEdgeId << std::endl;
-        }
-    }
-    else if (generateCityBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "\n🎮 GENERATE CITY BUTTON CLICKED" << std::endl;
-
-        MapGenerator::generateNextCity(cityMap);
-
-        if (carSim) {
-            carSim->clearAllCars();
-        }
-
-        selectedStartNode = -1;
-        selectedEndNode = -1;
-        sourceText = "";
-        destText = "";
-        currentPath.clear();
-
-        zoomLevel = 1.0f;
-        viewOffset = sf::Vector2f(0.0f, 0.0f);
-
-        std::string cityNames[6] = {
-            "Simple Grid", "Complex City", "Random City",
-            "Metropolis", "Planned City", "Coastal City"
-        };
-
-        static int currentType = 0;
-        currentType = (currentType + 1) % 6;
-
-        generateCityBtn.label.setString("City: " + cityNames[currentType]);
-
-        std::cout << "Current city: " << cityNames[currentType] << "\n" << std::endl;
-    }
-    else if (spawnManyCarsBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "Add 20 Cars button clicked!" << std::endl;
-
-        if (carSim) {
-            auto nodes = cityMap.getAllNodes();
-            if (nodes.size() >= 2) {
-                std::vector<int> nodeIds;
-                for (const auto& pair : nodes) {
-                    nodeIds.push_back(pair.first);
-                }
-
-                for (int i = 0; i < 20; i++) {
-                    int startNode = nodeIds[rand() % nodeIds.size()];
-                    int endNode = nodeIds[rand() % nodeIds.size()];
-
-                    while (endNode == startNode && nodeIds.size() > 1) {
-                        endNode = nodeIds[rand() % nodeIds.size()];
-                    }
-
-                    addCar(startNode, endNode);
-                }
-                std::cout << "Added 20 cars!" << std::endl;
-            }
-        }
-    }
-
-    else if (rushHourBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "\n SIMULATING RUSH HOUR TRAFFIC JAM" << std::endl;
-
-        if (carSim) {
-            for (int i = 0; i < 40; i++) {
-                carSim->addRandomCar();
-            }
-        }
-
-        auto edges = cityMap.getAllEdges();
-        if (!edges.empty() && accidentSystem) {
-            auto it = edges.begin();
-            std::advance(it, rand() % edges.size());
-            int edgeId = it->first;
-
-            accidentSystem->createAccident(edgeId, 180.0f);
-            cityMap.blockEdge(edgeId, 180.0f);
-
-            std::cout << "   Accident on road " << edgeId << " (3 minutes)" << std::endl;
-        }
-
-        simulationSpeed = 0.3f;
-
-        rushHourBtn.shape.setFillColor(sf::Color(255, 50, 50));
-
-        std::cout << " Created traffic jam! 40 cars + accident" << std::endl;
-        }
-    else if (clearTrafficBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "Clearing traffic..." << std::endl;
-
-        auto edges = cityMap.getAllEdges();
-        for (const auto& pair : edges) {
-            cityMap.updateEdgeTraffic(pair.first, pair.second.speedLimit);
-        }
-
-        if (carSim) {
-            carSim->clearAllCars();
-        }
-
-        simulationSpeed = 1.0f;
-    }
-    else if (clearAccidentsBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "Clear Accidents button clicked!" << std::endl;
-
-        if (accidentSystem) {
-            accidentSystem->clearAllAccidents();
-        }
-
-        auto edges = cityMap.getAllEdges();
-        for (const auto& pair : edges) {
-            cityMap.unblockEdge(pair.first);
-        }
-    }
-    else if (togglePredictionsBtn.shape.getGlobalBounds().contains(mousePos)) {
-        std::cout << "Toggle Predictions button clicked!" << std::endl;
-
-        showPredictions = !showPredictions;
-        std::cout << "Predictions display: " << (showPredictions ? "ON" : "OFF") << std::endl;
-
-        if (showPredictions && predictionSystem) {
-            std::cout << "Predicting congestion for next 5 minutes..." << std::endl;
-            auto congestedEdges = predictionSystem->getEdgesLikelyToCongest(5);
-            std::cout << "Found " << congestedEdges.size() << " edges likely to congest" << std::endl;
-        }
+    else if (destActive) {
+        destActive = false;
+        sourceActive = true;
     }
 }
 
@@ -988,7 +1075,7 @@ void GUI::createButton(Button& btn, float x, float y, float w, float h, const st
 
     btn.label.setFont(font);
     btn.label.setString(text);
-    btn.label.setCharacterSize(13); 
+    btn.label.setCharacterSize(UIConfig::BUTTON_TEXT_SIZE);
     btn.label.setFillColor(sf::Color::White);
     btn.label.setStyle(sf::Text::Bold);
 
@@ -996,7 +1083,6 @@ void GUI::createButton(Button& btn, float x, float y, float w, float h, const st
     btn.label.setOrigin(0, 0);
     float textX = x + (w - textBounds.width) / 2.0f;
     float textY = y + (h - textBounds.height) / 2.0f - 4.0f;
-
     btn.label.setPosition(textX, textY);
 }
 
@@ -1008,7 +1094,6 @@ void GUI::drawButton(const Button& btn) {
 void GUI::setCurrentPath(const std::vector<int>& path) {
     currentPath = path;
 }
-
 
 void GUI::updateAccidentVisuals() {
     accidentIcons.clear();
@@ -1041,8 +1126,6 @@ void GUI::updateAccidentVisuals() {
     }
 }
 
-
-
 void GUI::updateStatistics(int nodeCount, int edgeCount, int carCount, float avgSpeed) {
     std::stringstream ss;
 
@@ -1074,6 +1157,14 @@ void GUI::updateStatistics(int nodeCount, int edgeCount, int carCount, float avg
         if (!path.empty()) {
             float travelTime = 0.0f;
             for (size_t i = 0; i < path.size() - 1; i++) {
+                int fromNode = path[i];
+                int toNode = path[i + 1];
+
+                int edgeId = cityMap.findEdgeId(fromNode, toNode);
+                if (edgeId != -1) {
+                    Edge edge = cityMap.getEdge(edgeId);
+                    travelTime += edge.currentTravelTime;
+                }
             }
             ss << "Est. Time:  " << std::setw(4) << std::fixed << std::setprecision(1)
                 << travelTime << " min\n";

@@ -33,18 +33,14 @@ private:
     std::string sourceText, destText;
     bool sourceActive, destActive;
 
+    // Systems
     AccidentSystem* accidentSystem;
-
-
-    PredictionSystem* predictionSystem;  // ADD THIS
-    bool showPredictions;                // Toggle prediction display
-
-    // Prediction colors
-    sf::Color predictedCongestionColor;  // Purple for predicted congestion
-
-    // Prediction overlay
-    void drawPredictions();
-
+    PredictionSystem* predictionSystem;
+    CarSimulation* carSim;
+    
+    // Prediction settings
+    bool showPredictions;
+    sf::Color predictedCongestionColor;
 
     // Buttons
     struct Button {
@@ -58,18 +54,12 @@ private:
     Button trafficBtn;
     Button peakHourBtn;
     Button accidentBtn;
-
-
-    // Add to Button struct section in GUI.h
     Button generateCityBtn;
     Button spawnManyCarsBtn;
     Button rushHourBtn;
     Button clearTrafficBtn;
-    Button toggleHeatmapBtn;
-
     Button clearAccidentsBtn;
     Button togglePredictionsBtn;
-
 
     // Statistics
     sf::Text statsText;
@@ -92,15 +82,11 @@ private:
     sf::Color blockedColor;
 
     // Car simulation
-    CarSimulation* carSim;
     bool showCars;
     float simulationSpeed;
     int totalCarsSpawned;
 
     sf::Clock guiClock;
-
-    // Method to update accident icons
-    void updateAccidentVisuals();
 
 public:
     GUI(Graph& map);
@@ -108,32 +94,50 @@ public:
 
     void run();
     void addCar(int startNode, int endNode);
-
-    // Public methods
     void setCurrentPath(const std::vector<int>& path);
     void updateStatistics(int nodeCount, int edgeCount, int carCount, float avgSpeed);
     PredictionSystem* getPredictionSystem() { return predictionSystem; }
 
 private:
-    void handleEvents();
-    void update();
-    void render();
-    void updateSimulation(float deltaTime);
+    // Initialization methods
+    void initializeFont();
+    void initializeWarningTexture();
+    void initializeSystems();
+    void initializeUI();
+    void initializeControlPanel();
+    void initializeInputFields();
+    void initializeButtons();
+    void initializeStatistics();
 
-    // Drawing methods
+    // Event handling
+    void handleEvents();
+    void handleMouseClick(int x, int y);
+    void handleControlPanelClick(const sf::Vector2f& screenPos);
+    void handleMapClick(int x, int y);
+    void handleNodeSelection(int nodeId);
+    void handleTextInput(sf::Uint32 unicode);
+    void handleBackspace();
+    void handleDigitInput(char digit);
+    void handleEnterKey();
+    void handleButtonClick(const sf::Vector2f& mousePos);
+
+    // Update methods
+    void update();
+    void updateSimulation(float deltaTime);
+    void updateAccidentVisuals();
+
+    // Rendering methods
+    void render();
     void drawControlPanel();
     void drawMap();
     void drawNode(const Node& node, bool isSelected);
     void drawEdge(const Edge& edge);
     void drawPath();
     void drawCars();
-
-    // Input handling
-    void handleMouseClick(int x, int y);
-    void handleTextInput(sf::Uint32 unicode);
-    void handleButtonClick(const sf::Vector2f& mousePos);
+    void drawPredictions();
 
     // Helper methods
     void createButton(Button& btn, float x, float y, float w, float h, const std::string& text);
     void drawButton(const Button& btn);
+    int findNodeAtPosition(const sf::Vector2f& worldPos) const;
 };

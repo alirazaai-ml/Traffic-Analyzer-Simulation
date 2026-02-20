@@ -1,28 +1,35 @@
 #include "GUI.h"
 #include "Graph.h"
-#include "MapGenerator.h"  
+#include "MapGenerator.h"
+#include "Logger.h"
 #include <iostream>
 
 int main() {
     try {
+        // Initialize logging system
+        Logger::init("traffic_analyzer.log");
+        LOG_INFO("=== Traffic Analysis System Starting ===");
+
         Graph cityMap;
 
-        std::cout << " Traffic Analysis System " << std::endl;
-        std::cout << "1. Generating complex city layout..." << std::endl;
-
+        LOG_INFO("Generating complex city layout...");
         MapGenerator::generateComplexCity(cityMap);
 
-        std::cout << "2. City generated: " << cityMap.getNodeCount()
-            << " nodes, " << cityMap.getEdgeCount() << " roads." << std::endl;
-        std::cout << "3. Starting GUI..." << std::endl;
+        LOG_INFO("City generated: " + std::to_string(cityMap.getNodeCount()) +
+            " nodes, " + std::to_string(cityMap.getEdgeCount()) + " roads");
 
+        LOG_INFO("Starting GUI...");
         GUI gui(cityMap);
         gui.run();
+
+        LOG_INFO("=== Traffic Analysis System Shutting Down ===");
+        Logger::shutdown();
 
         return 0;
     }
     catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        LOG_CRITICAL(std::string("Fatal error: ") + e.what());
+        Logger::shutdown();
         return 1;
     }
 }

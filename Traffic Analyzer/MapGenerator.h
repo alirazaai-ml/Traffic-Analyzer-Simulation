@@ -36,6 +36,9 @@ public:
         CITY_TYPE_COUNT
     };
 
+    // Generates and returns a new city map as a Graph object
+    static Graph generateCity();
+
 private:
     static void connectGrid(Graph& graph, int rows, int cols,
         float startX, float startY, float spacing);

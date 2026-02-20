@@ -37,4 +37,7 @@ public:
     // Visual effects
     sf::Color getEdgeColorWithAccident(int edgeId, sf::Color originalColor) const;
     bool shouldBlink(int edgeId) const; // For blinking effect
+
+    // Random accident creation
+    void createRandomAccident();
 };

@@ -145,15 +145,8 @@ float PredictionSystem::getRoutePredictedTime(const std::vector<int>& path, int 
         int fromNode = path[i];
         int toNode = path[i + 1];
 
-        auto edges = graph->getAllEdges();
-        int edgeId = -1;
-
-        for (const auto& pair : edges) {
-            if (pair.second.fromNodeId == fromNode && pair.second.toNodeId == toNode) {
-                edgeId = pair.first;
-                break;
-            }
-        }
+        // Use optimized edge lookup instead of linear search
+        int edgeId = graph->findEdgeId(fromNode, toNode);
 
         if (edgeId != -1) {
             TrafficPrediction pred = predictEdge(edgeId);

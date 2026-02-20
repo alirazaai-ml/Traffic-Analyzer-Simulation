@@ -29,6 +29,9 @@ void Graph::addEdge(int id, int from, int to, float length,
     edges[id] = Edge(id, from, to, length, speedLimit, name);
     adjacencyList[from].push_back(id);
     adjacencyList[to].push_back(id);
+    
+    // Add to cache for fast lookup
+    edgeCache.addEdge(from, to, id);
 }
 
 Node Graph::getNode(int id) const {
@@ -37,18 +40,47 @@ Node Graph::getNode(int id) const {
     return Node(-1, 0, 0, "");
 }
 
+bool Graph::hasNode(int id) const {
+    return nodes.find(id) != nodes.end();
+}
+
 Edge Graph::getEdge(int id) const {
     auto it = edges.find(id);
     if (it != edges.end()) return it->second;
     return Edge(-1, -1, -1, 0.0f, 0, "");
 }
 
-bool Graph::hasNode(int id) const {
-    return nodes.find(id) != nodes.end();
-}
-
 bool Graph::hasEdge(int id) const {
     return edges.find(id) != edges.end();
+}
+
+// Optimized edge lookup using cache
+int Graph::findEdgeId(int fromNode, int toNode) const {
+    return edgeCache.findEdge(fromNode, toNode);
+}
+
+Edge Graph::findEdgeByNodes(int fromNode, int toNode) const {
+    int edgeId = findEdgeId(fromNode, toNode);
+    if (edgeId != -1) {
+        return getEdge(edgeId);
+    }
+    return Edge(-1, -1, -1, 0.0f, 0, "");
+}
+
+void Graph::rebuildEdgeCache() {
+    edgeCache.clear();
+    for (const auto& pair : edges) {
+        const Edge& edge = pair.second;
+        edgeCache.addEdge(edge.fromNodeId, edge.toNodeId, edge.id);
+    }
+    edgeCache.markClean();
+}
+
+void Graph::clearGraph() {
+    nodes.clear();
+    edges.clear();
+    adjacencyList.clear();
+    edgeCache.clear();
 }
 
 const std::unordered_map<int, Node>& Graph::getAllNodes() const {
@@ -77,6 +109,34 @@ void Graph::updateEdgeTraffic(int edgeId, float currentSpeed) {
     auto it = edges.find(edgeId);
     if (it != edges.end()) {
         it->second.updateTraffic(currentSpeed);
+    }
+}
+
+void Graph::blockEdge(int edgeId, float duration) {
+    auto it = edges.find(edgeId);
+    if (it != edges.end()) {
+        it->second.setBlocked(true, duration);
+    }
+}
+
+void Graph::unblockEdge(int edgeId) {
+    auto it = edges.find(edgeId);
+    if (it != edges.end()) {
+        it->second.setBlocked(false);
+    }
+}
+
+bool Graph::isEdgeBlocked(int edgeId) const {
+    auto it = edges.find(edgeId);
+    if (it != edges.end()) {
+        return it->second.isBlocked;
+    }
+    return false;
+}
+
+void Graph::updateAccidents(float deltaTime) {
+    for (auto& pair : edges) {
+        pair.second.updateAccidentTimer(deltaTime);
     }
 }
 
@@ -238,4 +298,5 @@ void Graph::loadFromFile(const std::string& filename) {
     }
 
     file.close();
+    rebuildEdgeCache();
 }

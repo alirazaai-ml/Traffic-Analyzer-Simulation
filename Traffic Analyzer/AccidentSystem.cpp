@@ -23,7 +23,7 @@ void AccidentSystem::createAccident(int edgeId, float duration) {
     activeAccidents.push_back(newAccident);
 
     if (graphRef) {
- 
+        graphRef->blockEdge(edgeId, duration);
     }
 
     std::cout << "Accident created on edge " << edgeId
@@ -124,4 +124,36 @@ bool AccidentSystem::shouldBlink(int edgeId) const {
     }
 
     return static_cast<int>(time * 2.0f) % 2 == 0;
+}
+
+void AccidentSystem::createRandomAccident() {
+    if (!graphRef) {
+        std::cout << "Error: No graph reference for creating accident" << std::endl;
+        return;
+    }
+
+    auto edges = graphRef->getAllEdges();
+    if (edges.empty()) {
+        std::cout << "Error: No edges available for accident creation" << std::endl;
+        return;
+    }
+
+    std::vector<int> edgeIds;
+    for (const auto& pair : edges) {
+        if (!hasAccidentOnEdge(pair.first)) {
+            edgeIds.push_back(pair.first);
+        }
+    }
+
+    if (edgeIds.empty()) {
+        std::cout << "All edges already have accidents!" << std::endl;
+        return;
+    }
+
+    int randomIndex = rand() % edgeIds.size();
+    int selectedEdgeId = edgeIds[randomIndex];
+
+    float duration = 60.0f + (rand() % 300);
+
+    createAccident(selectedEdgeId, duration);
 }

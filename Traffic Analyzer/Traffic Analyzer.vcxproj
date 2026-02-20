@@ -135,34 +135,37 @@
   <ItemGroup>
     <ClCompile Include="AccidentSystem.cpp" />
     <ClCompile Include="CarSimulation.cpp" />
-    <ClCompile Include="FontManager.cpp" />
     <ClCompile Include="Graph.cpp" />
     <ClCompile Include="GUI.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MapGenerator.cpp" />
     <ClCompile Include="MapRenderer.cpp" />
     <ClCompile Include="PredictionSystem.cpp" />
-    <ClCompile Include="TrafficSystem.cpp" />
-    <ClCompile Include="TrafficUpdates.cpp" />
-    <ClCompile Include="UIManager.cpp" />
-    <ClCompile Include="Vehicle.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AccidentSystem.h" />
     <ClInclude Include="CarSimulation.h" />
-    <ClInclude Include="FontManager.h" />
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="EdgeCache.h" />
     <ClInclude Include="Graph.h" />
     <ClInclude Include="GUI.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="MapGenerator.h" />
     <ClInclude Include="MapRenderer.h" />
     <ClInclude Include="PredictionSystem.h" />
-    <ClInclude Include="TrafficSystem.h" />
-    <ClInclude Include="TrafficUpdates.h" />
-    <ClInclude Include="UIManager.h" />
-    <ClInclude Include="Vehicle.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="complex_city.map" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="BUGFIXES.txt" />
+    <Text Include="BUG_FIX_REPORT.txt" />
+    <Text Include="FINAL_MANUAL_FIXES.txt" />
+    <Text Include="GUI_ERRORS_TO_FIX.txt" />
+    <Text Include="HOW_TO_FIX_BUTTONS.txt" />
+    <Text Include="HOW_TO_FIX_TRAVELTIME.txt" />
+    <Text Include="QUICK_START.txt" />
+    <Text Include="README_BUGFIXES.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

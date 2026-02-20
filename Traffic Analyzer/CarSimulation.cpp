@@ -6,6 +6,10 @@
 #include <cmath>
 #include <unordered_map>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 // Car constructor
 CarSimulation::Car::Car(int id, int start, int dest)
     : id(id), currentPosition(start), destination(dest),
@@ -223,7 +227,7 @@ void CarSimulation::draw(sf::RenderWindow& window, float zoom, sf::Vector2f offs
         float dx = to.x - from.x;
         float dy = to.y - from.y;
         if (dx != 0 || dy != 0) {
-            float angle = std::atan2(dy, dx) * 180.0f / 3.14159f;
+            float angle = std::atan2(dy, dx) * 180.0f / M_PI;
             triangle.setRotation(angle);
         }
 
@@ -238,15 +242,8 @@ void CarSimulation::clearAllCars() {
 }
 
 Edge CarSimulation::findEdge(int fromNode, int toNode) const {
-    auto edgesList = cityMap.getEdgesFromNode(fromNode);
-    for (int edgeId : edgesList) {
-        Edge edge = cityMap.getEdge(edgeId);
-        if ((edge.fromNodeId == fromNode && edge.toNodeId == toNode) ||
-            (edge.fromNodeId == toNode && edge.toNodeId == fromNode)) {
-            return edge;
-        }
-    }
-    return Edge(-1, -1, -1, 0.0f, 0, "");
+    // Use optimized cache lookup instead of linear search
+    return cityMap.findEdgeByNodes(fromNode, toNode);
 }
 
 // Calculate route using Dijkstra's algorithm
